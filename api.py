@@ -16,14 +16,16 @@ class API:
 
         return response(environ, start_response)
 
-    def route(self, path: str):
-        assert path not in self.routes, "That route already exists."
-
+    def route(self, path):
         def wrapper(handler):
-            self.routes[path] = handler
+            self.add_route(path, handler)
             return handler
 
         return wrapper
+
+    def add_route(self, path, handler):
+        assert path not in self.routes, "That route already exists."
+        self.routes[path] = handler
 
     def default_response(self, response: webob.Response):
         response.status_code = 404
