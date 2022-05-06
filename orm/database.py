@@ -19,4 +19,45 @@ class Database:
         instance._data["id"] = cursor.lastrowid
         self.connection.commit()
 
+    def all(self, table):
+        sql, fields = table._get_select_all_sql()
 
+        result = []
+        for row in self.connection.execute(sql).fetchall():
+            instance = table()
+            for field, value in zip(fields, row):
+                if field.endswith('_id'):
+                    field = field[:-3]
+                    fk = getattr(table, field)
+                    value = self.get(fk.table, id=value)
+                setattr(instance, field, value)
+            result.append(instance)
+
+        return result
+
+    def get(self, table, id):
+        sql, fields, params = table._get_select_where_sql(id=id)
+
+        row = self.connection.execute(sql, params).fetchone()
+        if row is None:
+            raise Exception(f"{table.__name__} instance with id {id} does not exist")
+
+        instance = table()
+        for field, value in zip(fields, row):
+            if field.endswith('_id'):
+                field = field[:-3]
+                fk = getattr(table, field)
+                value = self.get(fk.table, id=value)
+            setattr(instance, field, value)
+
+        return instance
+
+    def update(self, instance):
+        sql, values = instance._get_update_sql()
+        self.connection.execute(sql, values)
+        self.connection.commit()
+
+    def delete(self, table, id):
+        sql, params = table._get_delete_sql(id)
+        self.connection.execute(sql, params)
+        self.connection.commit()
