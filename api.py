@@ -1,6 +1,8 @@
 import inspect
 import webob
 import parse
+import requests
+import wsgiadapter
 
 
 class API:
@@ -14,7 +16,7 @@ class API:
 
         return response(environ, start_response)
 
-    def route(self, path):
+    def route(self, path: str):
         assert path not in self.routes, "That route already exists."
 
         def wrapper(handler):
@@ -23,11 +25,11 @@ class API:
 
         return wrapper
 
-    def default_response(self, response):
+    def default_response(self, response: webob.Response):
         response.status_code = 404
         response.text = "Not found."
 
-    def find_handler(self, request_path):
+    def find_handler(self, request_path: str):
         for path, handler in self.routes.items():
             parse_result = parse.parse(path, request_path)
             if parse_result is not None:
@@ -35,14 +37,14 @@ class API:
 
         return None, None
 
-    def handle_request(self, request):
+    def handle_request(self, request: webob.Request):
         response = webob.Response()
 
         handler, kwargs = self.find_handler(request_path=request.path)
 
         if handler is not None:
             if inspect.isclass(handler):
-                handler = getattr(handler(), request.method.lower(), None)
+                handler = getattr(handler(), request.method.lower())
                 if handler is None:
                     raise AttributeError("Method not allowed", request.method)
 
@@ -51,3 +53,8 @@ class API:
             self.default_response(response)
 
         return response
+
+    def test_session(self, base_url: str = "http://testserver"):
+        session = requests.Session()
+        session.mount(prefix=base_url, adapter=wsgiadapter.WSGIAdapter(self))
+        return session
