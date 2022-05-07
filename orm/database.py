@@ -40,7 +40,7 @@ class Database:
 
         row = self.connection.execute(sql, params).fetchone()
         if row is None:
-            raise Exception(f"{table.__name__} instance with id {id} does not exist")
+            raise RecordDoesNotExist(f"{table.__name__} instance with id {id} does not exist")
 
         instance = table()
         for field, value in zip(fields, row):
@@ -61,3 +61,7 @@ class Database:
         sql, params = table._get_delete_sql(id)
         self.connection.execute(sql, params)
         self.connection.commit()
+
+
+class RecordDoesNotExist(Exception):
+    ...
